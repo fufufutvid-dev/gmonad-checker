@@ -115,6 +115,40 @@
             color: #9ca3af;
         }
 
+        .stats-banner {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            padding: 25px 30px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+            border: 2px solid rgba(139, 92, 246, 0.4);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+
         .search-container {
             max-width: 800px;
             margin: 0 auto 40px;
@@ -348,7 +382,7 @@
             }
         }
 
-        @media (max-width: 768px) {
+                    @media (max-width: 768px) {
             .hero h2 {
                 font-size: 2em;
             }
@@ -369,6 +403,15 @@
             .footer-content {
                 flex-direction: column;
                 text-align: center;
+            }
+
+            .stats-banner {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .stat-value {
+                font-size: 1.5em;
             }
         }
     </style>
@@ -405,6 +448,17 @@
         <div class="hero">
             <h2>Airdrop Eligibility Checker</h2>
             <p>Check if your wallet address is eligible for the GMONAD airdrop</p>
+        </div>
+
+        <div class="stats-banner">
+            <div class="stat-item">
+                <div class="stat-value" id="totalAddresses">-</div>
+                <div class="stat-label">Eligible Addresses</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalAllocation">-</div>
+                <div class="stat-label">Total Allocation</div>
+            </div>
         </div>
 
         <div class="search-container">
@@ -569,6 +623,7 @@
 
         // Data Loading and Checker Logic
         let eligibleAddresses = new Map();
+        let totalAllocation = 0;
 
         // Load CSV data
         Papa.parse('https://files.catbox.moe/jygy2f.csv', {
@@ -579,14 +634,23 @@
                 results.data.forEach(row => {
                     if (row.address) {
                         const address = row.address.trim().toLowerCase();
-                        const amount = row.amount || '0';
+                        const amount = parseFloat(row.amount) || 0;
                         eligibleAddresses.set(address, amount);
+                        totalAllocation += amount;
                     }
                 });
+                
+                // Update stats
+                document.getElementById('totalAddresses').textContent = eligibleAddresses.size.toLocaleString('en-US');
+                document.getElementById('totalAllocation').textContent = totalAllocation.toLocaleString('en-US') + ' $GMONAD';
+                
                 console.log(`Loaded ${eligibleAddresses.size} eligible addresses`);
+                console.log(`Total allocation: ${totalAllocation.toLocaleString('en-US')} $GMONAD`);
             },
             error: function(error) {
                 console.error('Error loading CSV:', error);
+                document.getElementById('totalAddresses').textContent = 'Error';
+                document.getElementById('totalAllocation').textContent = 'Error';
             }
         });
 
