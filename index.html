@@ -623,14 +623,24 @@
         // Data Loading and Checker Logic
         let eligibleAddresses = new Map();
         let totalAllocation = 0;
+        let dataLoaded = false;
 
         // Load TXT data
+        console.log('Starting to load data...');
         fetch('https://files.catbox.moe/d4smgp.txt')
-            .then(response => response.text())
+            .then(response => {
+                console.log('Response received:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
             .then(text => {
+                console.log('Data loaded, length:', text.length);
                 const lines = text.trim().split('\n');
+                console.log('Total lines:', lines.length);
                 
-                // Skip header line
+                // Skip header line (first line)
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (line) {
@@ -638,23 +648,30 @@
                         if (parts.length >= 2) {
                             const address = parts[0].trim().toLowerCase();
                             const amount = parseFloat(parts[1].trim()) || 0;
-                            eligibleAddresses.set(address, amount);
-                            totalAllocation += amount;
+                            if (address && amount > 0) {
+                                eligibleAddresses.set(address, amount);
+                                totalAllocation += amount;
+                            }
                         }
                     }
                 }
+                
+                dataLoaded = true;
                 
                 // Update stats
                 document.getElementById('totalAddresses').textContent = eligibleAddresses.size.toLocaleString('en-US');
                 document.getElementById('totalAllocation').textContent = totalAllocation.toLocaleString('en-US') + ' $GMONAD';
                 
-                console.log(`Loaded ${eligibleAddresses.size} eligible addresses`);
-                console.log(`Total allocation: ${totalAllocation.toLocaleString('en-US')} $GMONAD`);
+                console.log(`✅ Successfully loaded ${eligibleAddresses.size} eligible addresses`);
+                console.log(`✅ Total allocation: ${totalAllocation.toLocaleString('en-US')} $GMONAD`);
             })
             .catch(error => {
-                console.error('Error loading data:', error);
-                document.getElementById('totalAddresses').textContent = 'Error';
-                document.getElementById('totalAllocation').textContent = 'Error';
+                console.error('❌ Error loading data:', error);
+                document.getElementById('totalAddresses').textContent = 'Load Failed';
+                document.getElementById('totalAllocation').textContent = 'Load Failed';
+                
+                // Show error to user
+                alert('Failed to load airdrop data. Please refresh the page.');
             });
 
         const addressInput = document.getElementById('addressInput');
@@ -717,6 +734,11 @@
 
             if (!address) {
                 showResult('error', 'Error', 'Please enter a wallet address', null);
+                return;
+            }
+
+            if (!dataLoaded) {
+                showResult('error', 'Error', 'Airdrop data is still loading. Please wait a moment and try again.', null);
                 return;
             }
 
