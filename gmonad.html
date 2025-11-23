@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMONAD Airdrop Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            backdrop-filter: blur(10px);
+            background: rgba(139, 92, 246, 0.05);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 20px 0;
+            margin-bottom: 40px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            animation: pulse 2s infinite;
+        }
+
+        .logo h1 {
+            font-size: 2em;
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
+
+        .project-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            text-decoration: none;
+            color: #a78bfa;
+            transition: all 0.3s ease;
+        }
+
+        .project-link:hover {
+            background: rgba(139, 92, 246, 0.3);
+            border-color: rgba(139, 92, 246, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .hero h2 {
+            font-size: 3.5em;
+            background: linear-gradient(135deg, #c4b5fd 0%, #f9a8d4 50%, #c4b5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        .hero p {
+            font-size: 1.3em;
+            color: #9ca3af;
+        }
+
+        .search-container {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            position: relative;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            gap: 15px;
+        }
+
+        #addressInput {
+            flex: 1;
+            padding: 20px 25px;
+            font-size: 1.1em;
+            background: rgba(17, 24, 39, 0.5);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 15px;
+            color: #ffffff;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        #addressInput:focus {
+            outline: none;
+            border-color: #a78bfa;
+            box-shadow: 0 0 20px rgba(167, 139, 250, 0.3);
+        }
+
+        #addressInput::placeholder {
+            color: #6b7280;
+        }
+
+        #checkBtn {
+            padding: 20px 40px;
+            font-size: 1.1em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+            border: none;
+            border-radius: 15px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #checkBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(124, 58, 237, 0.4);
+        }
+
+        #checkBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        .result {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid;
+            display: none;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .result.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        .result.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .result.not-eligible {
+            background: rgba(251, 146, 60, 0.1);
+            border-color: rgba(251, 146, 60, 0.5);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-icon {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .result h3 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .result p {
+            font-size: 1.2em;
+            color: #d1d5db;
+            line-height: 1.6;
+        }
+
+        .address-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .address-box label {
+            font-size: 0.9em;
+            color: #9ca3af;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .address-box .address-text {
+            font-family: monospace;
+            color: #c4b5fd;
+            word-break: break-all;
+        }
+
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .info-card {
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+        }
+
+        .info-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-card ul, .info-card ol {
+            color: #d1d5db;
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+
+        .info-card li {
+            margin-bottom: 8px;
+        }
+
+        footer {
+            border-top: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 30px 0;
+            margin-top: 60px;
+            backdrop-filter: blur(10px);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .footer-content p {
+            color: #9ca3af;
+        }
+
+        .creator-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #a78bfa;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .creator-link:hover {
+            color: #c4b5fd;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero h2 {
+                font-size: 2em;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            #checkBtn {
+                justify-content: center;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" fill="url(#gradient)" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="3" y1="2" x2="21" y2="22">
+                            <stop offset="0%" style="stop-color:#a78bfa"/>
+                            <stop offset="100%" style="stop-color:#ec4899"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>GMONAD Checker</h1>
+            </div>
+            <a href="https://x.com/gmonadofficial" target="_blank" rel="noopener noreferrer" class="project-link">
+                <span>Official Project</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Airdrop Eligibility Checker</h2>
+            <p>Check if your wallet address is eligible for the GMONAD airdrop</p>
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="addressInput" 
+                    placeholder="Paste your wallet address here..."
+                    autocomplete="off"
+                >
+                <button id="checkBtn">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Check</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="result" class="result">
+            <div class="result-header">
+                <svg class="result-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle id="resultCircle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <path id="resultPath" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div>
+                    <h3 id="resultTitle"></h3>
+                    <p id="resultMessage"></p>
+                </div>
+            </div>
+            <div class="address-box" id="addressBox" style="display: none;">
+                <label>Address:</label>
+                <div class="address-text" id="resultAddress"></div>
+            </div>
+        </div>
+
+        <div class="info-cards">
+            <div class="info-card">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2">
+                        <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
+                    </svg>
+                    How to Use
+                </h3>
+                <ol>
+                    <li>Paste your wallet address in the search box</li>
+                    <li>Click "Check" or press Enter</li>
+                    <li>View your eligibility status instantly</li>
+                </ol>
+            </div>
+
+            <div class="info-card">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    Important Notice
+                </h3>
+                <p>This checker is an independent tool and is <strong>not affiliated</strong> with the official GMONAD team. Always verify information through official channels.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <p>© 2024 GMONAD Checker. Not affiliated with GMONAD official team.</p>
+            <a href="https://x.com/ega_2ez4crypto" target="_blank" rel="noopener noreferrer" class="creator-link">
+                <span>Created by @ega_2ez4crypto</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+            </a>
+        </div>
+    </footer>
+
+    <script>
+        // Canvas Animation
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const particleCount = 50;
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.life = Math.random() * 100 + 50;
+                this.maxLife = this.life;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.5;
+
+                if (this.life <= 0 || this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = `rgba(139, 92, 246, ${alpha * 0.8})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        function drawLightning() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) {
+                        const alpha = (1 - distance / 100) * 0.3;
+                        ctx.strokeStyle = `rgba(168, 85, 247, ${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(10, 10, 20, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            drawLightning();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Data Loading and Checker Logic
+        let eligibleAddresses = new Set();
+
+        // Load CSV data
+        Papa.parse('https://files.catbox.moe/jygy2f.csv', {
+            download: true,
+            header: false,
+            skipEmptyLines: true,
+            complete: function(results) {
+                results.data.slice(1).forEach(row => {
+                    if (row[0]) {
+                        eligibleAddresses.add(row[0].trim().toLowerCase());
+                    }
+                });
+                console.log(`Loaded ${eligibleAddresses.size} eligible addresses`);
+            },
+            error: function(error) {
+                console.error('Error loading CSV:', error);
+            }
+        });
+
+        const addressInput = document.getElementById('addressInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const resultDiv = document.getElementById('result');
+        const spinner = checkBtn.querySelector('.spinner');
+        const btnText = checkBtn.querySelector('.btn-text');
+
+        function showResult(type, title, message, address) {
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+            
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultMessage').textContent = message;
+            
+            const resultCircle = document.getElementById('resultCircle');
+            const resultPath = document.getElementById('resultPath');
+            
+            if (type === 'success') {
+                resultCircle.setAttribute('stroke', '#10b981');
+                resultPath.setAttribute('d', 'M9 12l2 2 4-4');
+                resultPath.setAttribute('stroke', '#10b981');
+            } else if (type === 'error') {
+                resultCircle.setAttribute('stroke', '#ef4444');
+                resultPath.setAttribute('d', 'M15 9l-6 6M9 9l6 6');
+                resultPath.setAttribute('stroke', '#ef4444');
+            } else {
+                resultCircle.setAttribute('stroke', '#fb923c');
+                resultPath.setAttribute('d', 'M15 9l-6 6M9 9l6 6');
+                resultPath.setAttribute('stroke', '#fb923c');
+            }
+
+            if (address) {
+                document.getElementById('addressBox').style.display = 'block';
+                document.getElementById('resultAddress').textContent = address;
+            } else {
+                document.getElementById('addressBox').style.display = 'none';
+            }
+
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function checkAddress() {
+            const address = addressInput.value.trim();
+
+            if (!address) {
+                showResult('error', 'Error', 'Please enter a wallet address', null);
+                return;
+            }
+
+            // Show loading
+            checkBtn.disabled = true;
+            spinner.style.display = 'block';
+            btnText.textContent = 'Checking...';
+
+            setTimeout(() => {
+                const normalizedAddress = address.toLowerCase();
+                const isEligible = eligibleAddresses.has(normalizedAddress);
+
+                if (isEligible) {
+                    showResult('success', 'Eligible!', 'Congratulations! Your address is eligible for the GMONAD airdrop!', address);
+                } else {
+                    showResult('not-eligible', 'Not Eligible', 'Sorry, this address is not eligible for the airdrop.', address);
+                }
+
+                // Hide loading
+                checkBtn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Check';
+            }, 1000);
+        }
+
+        checkBtn.addEventListener('click', checkAddress);
+        addressInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkAddress();
+            }
+        });
+    </script>
+</body>
+</html>
