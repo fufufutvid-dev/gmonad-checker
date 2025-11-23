@@ -434,8 +434,6 @@
                 </div>
             </div>
             <div class="address-box" id="addressBox" style="display: none;">
-                <label>Address:</label>
-                <div class="address-text" id="resultAddress"></div>
             </div>
         </div>
 
@@ -570,17 +568,19 @@
         });
 
         // Data Loading and Checker Logic
-        let eligibleAddresses = new Set();
+        let eligibleAddresses = new Map();
 
         // Load CSV data
         Papa.parse('https://files.catbox.moe/jygy2f.csv', {
             download: true,
-            header: false,
+            header: true,
             skipEmptyLines: true,
             complete: function(results) {
-                results.data.slice(1).forEach(row => {
-                    if (row[0]) {
-                        eligibleAddresses.add(row[0].trim().toLowerCase());
+                results.data.forEach(row => {
+                    if (row.address) {
+                        const address = row.address.trim().toLowerCase();
+                        const amount = row.amount || '0';
+                        eligibleAddresses.set(address, amount);
                     }
                 });
                 console.log(`Loaded ${eligibleAddresses.size} eligible addresses`);
@@ -596,7 +596,7 @@
         const spinner = checkBtn.querySelector('.spinner');
         const btnText = checkBtn.querySelector('.btn-text');
 
-        function showResult(type, title, message, address) {
+        function showResult(type, title, message, address, amount = null) {
             resultDiv.className = `result ${type}`;
             resultDiv.style.display = 'block';
             
@@ -620,11 +620,26 @@
                 resultPath.setAttribute('stroke', '#fb923c');
             }
 
+            const addressBox = document.getElementById('addressBox');
             if (address) {
-                document.getElementById('addressBox').style.display = 'block';
-                document.getElementById('resultAddress').textContent = address;
+                let addressHTML = `<label>Address:</label><div class="address-text">${address}</div>`;
+                
+                if (amount) {
+                    const formattedAmount = parseFloat(amount).toLocaleString('en-US');
+                    addressHTML += `
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(139, 92, 246, 0.3);">
+                            <label>Airdrop Amount:</label>
+                            <div style="color: #a78bfa; font-size: 1.5em; font-weight: bold; margin-top: 5px;">
+                                🪙 ${formattedAmount} $GMONAD
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                addressBox.innerHTML = addressHTML;
+                addressBox.style.display = 'block';
             } else {
-                document.getElementById('addressBox').style.display = 'none';
+                addressBox.style.display = 'none';
             }
 
             resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -645,10 +660,10 @@
 
             setTimeout(() => {
                 const normalizedAddress = address.toLowerCase();
-                const isEligible = eligibleAddresses.has(normalizedAddress);
+                const amount = eligibleAddresses.get(normalizedAddress);
 
-                if (isEligible) {
-                    showResult('success', 'Eligible!', 'Congratulations! Your address is eligible for the GMONAD airdrop!', address);
+                if (amount !== undefined) {
+                    showResult('success', 'Eligible!', 'Congratulations! Your address is eligible for the GMONAD airdrop!', address, amount);
                 } else {
                     showResult('not-eligible', 'Not Eligible', 'Sorry, this address is not eligible for the airdrop.', address);
                 }
