@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GMONAD Airdrop Checker</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -625,20 +624,25 @@
         let eligibleAddresses = new Map();
         let totalAllocation = 0;
 
-        // Load CSV data
-        Papa.parse('https://files.catbox.moe/jygy2f.csv', {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                results.data.forEach(row => {
-                    if (row.address) {
-                        const address = row.address.trim().toLowerCase();
-                        const amount = parseFloat(row.amount) || 0;
-                        eligibleAddresses.set(address, amount);
-                        totalAllocation += amount;
+        // Load TXT data
+        fetch('https://files.catbox.moe/d4smgp.txt')
+            .then(response => response.text())
+            .then(text => {
+                const lines = text.trim().split('\n');
+                
+                // Skip header line
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        const parts = line.split(',');
+                        if (parts.length >= 2) {
+                            const address = parts[0].trim().toLowerCase();
+                            const amount = parseFloat(parts[1].trim()) || 0;
+                            eligibleAddresses.set(address, amount);
+                            totalAllocation += amount;
+                        }
                     }
-                });
+                }
                 
                 // Update stats
                 document.getElementById('totalAddresses').textContent = eligibleAddresses.size.toLocaleString('en-US');
@@ -646,13 +650,12 @@
                 
                 console.log(`Loaded ${eligibleAddresses.size} eligible addresses`);
                 console.log(`Total allocation: ${totalAllocation.toLocaleString('en-US')} $GMONAD`);
-            },
-            error: function(error) {
-                console.error('Error loading CSV:', error);
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
                 document.getElementById('totalAddresses').textContent = 'Error';
                 document.getElementById('totalAllocation').textContent = 'Error';
-            }
-        });
+            });
 
         const addressInput = document.getElementById('addressInput');
         const checkBtn = document.getElementById('checkBtn');
